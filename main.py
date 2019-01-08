@@ -33,6 +33,7 @@ class Comic:
         self.text = self.getPageCode()        
         self.name = self.getComicName()
         self.pages = self.getPageCount()
+        self.downloadFolder = home + os.sep + self.name
     
     def getPageCode(self):
         return requests.get(self.url + '1', headers=headers).text
@@ -42,7 +43,6 @@ class Comic:
         return pat_string.search(requests.get(self.url + '1', headers=headers).text).group(1)
     
     def getComicName(self):
-        print(self.url)
         name_pat = re.compile(r'<title>Page [0-9]+? \| (.+?) - ')
         return name_pat.search(self.text).group(1)
 
@@ -50,19 +50,12 @@ class Comic:
         pageOptionPat = re.compile(r'<option value=".+?">(.+?)</option>')
         return len(pageOptionPat.findall(self.text))
 
-    def deleteFolder(self):
-        pass
-
     def downloadPages(self):
-        global home
-        s = requests.Session()
+        global downloadCount
         createDir(home)
-        try:
-            os.mkdir(home + os.sep + self.name)
-        except:
-            print(home)
-            rmtree(home + os.sep + self.name, ignore_errors=True)            
-            os.mkdir(home + os.sep + self.name)
+        deleteDir(self.downloadFolder)
+        createDir(self.downloadFolder)
+        
         imageUrlPat = re.compile(r"\$\(\['//(.+?)[0-9]+?\.jpg','//")
         numLen = getNumLen(self.pages) - 1
         target = 10    
@@ -73,11 +66,12 @@ class Comic:
             filename = 'Comics' + os.sep + self.name + os.sep + "0" * numLen + str(i) + '.jpg'
             try:        
                 print('[==>] Downloading %d out of %d' % (i, self.pages))
-                comicPage = s.get(self.url + str(i), headers=headers).text
-                #print(comicPage)                
-                imageUrl = imageUrlPat.search(comicPage).group(1) + str(i) + '.jpg'
-                imageUrl = cleanUrl(imageUrl)
-                imagePage = s.get(imageUrl, headers=headers, stream=True)
+                comicPage = requests.get(self.url + str(i), headers=headers).text
+                #print(comicPage)                                
+                imageUrl = imageUrlPat.search(comicPage).group(1)
+                imageUrl = cleanUrl(imageUrl) + str(i) + '.jpg'
+#                print("[D] " + imageUrl)                          
+                imagePage = requests.get(imageUrl, headers=headers, stream=True)
                 comicPageFile = open(filename, "wb")            
                 for chunk in imagePage.iter_content(chunk_size=256):
                     if chunk:
@@ -87,18 +81,21 @@ class Comic:
                 print('[x] There is a mistake in a URL')
                 return
         print("[o] Done!")
+        downloadCount += 1
 
     def createCBZ(self):
-        global home
         self.downloadPages()
-        cbz = zipfile.ZipFile(home + os.sep + self.name + ".cbz", mode="w")        
+        cbz = zipfile.ZipFile(self.downloadFolder + ".cbz", mode="w")        
         numLen = getNumLen(self.pages) - 1
         target = 10
         for i in xrange(1, self.pages + 1):
             if i == target:
                 target *= 10
                 numLen -= 1            
-            cbz.write(home + os.sep + self.name + os.sep + "0" * numLen + str(i) + ".jpg")
+            try:
+                cbz.write(self.downloadFolder + os.sep + "0" * numLen + str(i) + ".jpg")
+            except:
+                return
         cbz.close()
         rmtree(home + os.sep + self.name, ignore_errors=True)
 
@@ -107,6 +104,9 @@ def createDir(name):
         os.mkdir(name)
     except:
         pass
+
+def deleteDir(name):
+    rmtree(name, ignore_errors=True)
 
 def readConfig(conf):
     global config    
@@ -142,11 +142,11 @@ def init():
     ini.close()
     
     home = config.get('base', 'home')
-    print("[D] home={}".format(home))
+#    print("[D] home={}".format(home))
     comicType = config.get('base', 'type')
-    print("[D] type={}".format(comicType))    
-    downloadCount = config.get('base', 'count')
-    print("[D] count={}".format(downloadCount))
+#    print("[D] type={}".format(comicType))    
+    downloadCount = int(config.get('base', 'count'))
+#    print("[D] count={}".format(downloadCount))
     
 def updateConfig():
 #    global home
