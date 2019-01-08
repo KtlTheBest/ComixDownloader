@@ -12,6 +12,8 @@ home = ""
 comicType = ""
 downloadCount = 0
 
+comicsIniFilePath = "support" + os.sep + "Comics.ini"
+
 try:
     config = ConfigParser.RawConfigParser(allow_no_value=True)
 except:
@@ -40,6 +42,7 @@ class Comic:
         return pat_string.search(requests.get(self.url + '1', headers=headers).text).group(1)
     
     def getComicName(self):
+        print(self.url)
         name_pat = re.compile(r'<title>Page [0-9]+? \| (.+?) - ')
         return name_pat.search(self.text).group(1)
 
@@ -53,24 +56,26 @@ class Comic:
     def downloadPages(self):
         global home
         s = requests.Session()
+        createDir(home)
         try:
             os.mkdir(home + os.sep + self.name)
         except:
+            print(home)
             rmtree(home + os.sep + self.name, ignore_errors=True)            
             os.mkdir(home + os.sep + self.name)
-        imageUrlPat = re.compile(r"\$\(\['//(.+?[0-9]+?.jpg)','//")
+        imageUrlPat = re.compile(r"\$\(\['//(.+?)[0-9]+?\.jpg','//")
         numLen = getNumLen(self.pages) - 1
         target = 10    
-        for i in xrange(1, self.pages):
+        for i in xrange(1, self.pages + 1):
             if i == target:
                 target *= 10
                 numLen -= 1            
             filename = 'Comics' + os.sep + self.name + os.sep + "0" * numLen + str(i) + '.jpg'
             try:        
-                print('[==>] Downloading %d out of %d' % (i, self.pages - 1))
+                print('[==>] Downloading %d out of %d' % (i, self.pages))
                 comicPage = s.get(self.url + str(i), headers=headers).text
                 #print(comicPage)                
-                imageUrl = imageUrlPat.search(comicPage).group(1)
+                imageUrl = imageUrlPat.search(comicPage).group(1) + str(i) + '.jpg'
                 imageUrl = cleanUrl(imageUrl)
                 imagePage = s.get(imageUrl, headers=headers, stream=True)
                 comicPageFile = open(filename, "wb")            
@@ -81,20 +86,27 @@ class Comic:
             except Exception, e:                
                 print('[x] There is a mistake in a URL')
                 return
+        print("[o] Done!")
 
     def createCBZ(self):
         global home
-        cbz = zipfile.ZipFile(home + os.sep + self.name + ".cbz", mode="w")
         self.downloadPages()
+        cbz = zipfile.ZipFile(home + os.sep + self.name + ".cbz", mode="w")        
         numLen = getNumLen(self.pages) - 1
         target = 10
-        for i in xrange(1, self.pages):
+        for i in xrange(1, self.pages + 1):
             if i == target:
                 target *= 10
                 numLen -= 1            
             cbz.write(home + os.sep + self.name + os.sep + "0" * numLen + str(i) + ".jpg")
         cbz.close()
         rmtree(home + os.sep + self.name, ignore_errors=True)
+
+def createDir(name):
+    try:
+        os.mkdir(name)
+    except:
+        pass
 
 def readConfig(conf):
     global config    
@@ -112,28 +124,35 @@ def init():
     print("\tP.S. To get help, enter :h")    
     
     try:
-        configFile = open("Comics.ini")
+        ini = open(comicsIniFilePath)
     except:
-        configFile = open("Comics.ini", "w")
-        configFile.write("[base]\n")        
-        configFile.write("type=folder\n")
-        configFile.write("count=0\n")
-        configFile.write("home=Comics")
-        configFile.close()
-        configFile = open("Comics.ini")
+        try:
+            os.mkdir("support")
+        except:
+            pass
+        ini = open(comicsIniFilePath, "w")
+        ini.write("[base]\n")        
+        ini.write("type=folder\n")
+        ini.write("count=0\n")
+        ini.write("home=Comics")
+        ini.close()
+        ini = open(comicsIniFilePath)
     
-    readConfig(configFile)
-    configFile.close()
+    readConfig(ini)
+    ini.close()
     
     home = config.get('base', 'home')
+    print("[D] home={}".format(home))
     comicType = config.get('base', 'type')
+    print("[D] type={}".format(comicType))    
     downloadCount = config.get('base', 'count')
+    print("[D] count={}".format(downloadCount))
     
 def updateConfig():
-    global home
-    global comicType
-    global downloadCount    
-    configFile = open("Comics.ini", "w")
+#    global home
+#    global comicType
+#    global downloadCount    
+    configFile = open(comicsIniFilePath, "w")
     configFile.write("[base]\n")
     configFile.write("type={}\n".format(comicType))
     configFile.write("count={}\n".format(str(downloadCount)))
