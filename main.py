@@ -29,13 +29,14 @@ headers = {
 class Comic:
     def __init__(self, url):
         self.url = url
+        host = getHostFromUrl(self.url)        
+        self.mangaUrlPatRE = parser.get(host, "mangaUrlPat")        
+        self.imageUrlPatRE = parser.get(host, "imageUrlPat")
+        self.mangaNamePatRE = parser.get(host, "mangaNamePat")
+        self.optionPatRE = parser.get(host, "optionPat")        
         self.text = self.getPageCode()        
         self.name = self.getComicName()
         self.pages = self.getPageCount()
-        self.mangaUrlPatRE = ""        
-        self.imageUrlPatRE = ""
-        self.mangaNamePatRE = ""
-        self.optionPatRE = ""
         self.downloadFolder = home + os.sep + self.name
     
     def getPageCode(self):
@@ -48,12 +49,6 @@ class Comic:
     def getPageCount(self):
         pageOptionPat = re.compile(self.optionPatRE)
         return len(pageOptionPat.findall(self.text))
-
-    def updateRegex(self, host):
-        self.mangaUrlPatRE = parser.get(host, "mangaUrlPat")        
-        self.imageUrlPatRE = parser.get(host, "imageUrlPat")
-        self.mangaNamePatRE = parser.get(host, "mangaNamePat")
-        self.optionPatRE = parser.get(host, "optionPat")
 
     def downloadPages(self):
         global downloadCount
@@ -106,9 +101,9 @@ class Comic:
     
     def download(self):
         if comicType == "folder":
-            newComic.downloadPages()
+            self.downloadPages()
         else:
-            newComic.createCBZ()
+            self.createCBZ()
 
 def createDir(name):
     try:
@@ -120,7 +115,7 @@ def deleteDir(name):
     rmtree(name, ignore_errors=True)
 
 def getHostFromUrl(url):
-    return urlparse(url).netloc.split(":")[0]
+    return urlparse(url).netloc.split(".")[0]
 
 def readConfig(conf):
     global parser
@@ -232,7 +227,6 @@ def resolveInput(buff):
             tmp = comicUrl.split("allery")
             comicUrl = tmp[0] + tmp[1]
         newComic = Comic(comicUrl)
-        newComic.updateRegex(host)
         newComic.download()        
         del(newComic)
     
