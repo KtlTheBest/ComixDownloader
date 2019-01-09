@@ -6,6 +6,7 @@ import sys
 import ConfigParser
 import io
 import zipfile
+from urlparse import urlparse
 from shutil import rmtree
 
 home = ""
@@ -13,6 +14,7 @@ comicType = ""
 downloadCount = 0
 
 comicsIniFilePath = "support" + os.sep + "Comics.ini"
+linksIniFilePath  = "support" + os.sep + "links.ini"
 
 parser = ConfigParser.RawConfigParser(allow_no_value=True)
 
@@ -30,23 +32,28 @@ class Comic:
         self.text = self.getPageCode()        
         self.name = self.getComicName()
         self.pages = self.getPageCount()
-        
+        self.mangaUrlPatRE = ""        
+        self.imageUrlPatRE = ""
+        self.mangaNamePatRE = ""
+        self.optionPatRE = ""
         self.downloadFolder = home + os.sep + self.name
     
     def getPageCode(self):
         return requests.get(self.url + '1', headers=headers).text
     
-    def getTitle(self):
-        pat_string = re.compile(r'<title>(.+?)</title>')
-        return pat_string.search(requests.get(self.url + '1', headers=headers).text).group(1)
-    
     def getComicName(self):
-        name_pat = re.compile(r'<title>Page [0-9]+? \| (.+?) - ')
+        name_pat = re.compile(self.mangaNamePatRE)
         return name_pat.search(self.text).group(1)
 
     def getPageCount(self):
-        pageOptionPat = re.compile(r'<option value=".+?">(.+?)</option>')
+        pageOptionPat = re.compile(self.optionPatRE)
         return len(pageOptionPat.findall(self.text))
+
+    def updateRegex(self, host):
+        self.mangaUrlPatRE = parser.get(host, "mangaUrlPat")        
+        self.imageUrlPatRE = parser.get(host, "imageUrlPat")
+        self.mangaNamePatRE = parser.get(host, "mangaNamePat")
+        self.optionPatRE = parser.get(host, "optionPat")
 
     def downloadPages(self):
         global downloadCount
@@ -54,13 +61,13 @@ class Comic:
         deleteDir(self.downloadFolder)
         createDir(self.downloadFolder)
         
-        imageUrlPat = re.compile(r"\$\(\['//(.+?)[0-9]+?\.jpg','//")
+        imageUrlPat = re.compile(self.imageUrlPatRE)
         numLen = getNumLen(self.pages) - 1
         target = 10    
         for i in xrange(1, self.pages + 1):
             if i == target:
                 target *= 10
-                numLen -= 1            
+                numLen -= 1
             filename = 'Comics' + os.sep + self.name + os.sep + "0" * numLen + str(i) + '.jpg'
             try:        
                 print('[==>] Downloading %d out of %d' % (i, self.pages))
@@ -96,6 +103,12 @@ class Comic:
                 return
         cbz.close()
         rmtree(home + os.sep + self.name, ignore_errors=True)
+    
+    def download(self):
+        if comicType == "folder":
+            newComic.downloadPages()
+        else:
+            newComic.createCBZ()
 
 def createDir(name):
     try:
@@ -106,21 +119,25 @@ def createDir(name):
 def deleteDir(name):
     rmtree(name, ignore_errors=True)
 
+def getHostFromUrl(url):
+    return urlparse(url).netloc.split(":")[0]
+
 def readConfig(conf):
-    global parser    
+    global parser
     sample_config = conf.read()
     conf.close()
     parser.readfp(io.BytesIO(sample_config))
 
 def init():
+    
     global home
-    global comicType
-    global downloadCount    
-    global config
+    global downloadCount
+    global comicType 
     
     print("\tComics downloader by marik")
     print("\tP.S. To get help, enter :h")    
-    
+    print
+
     try:
         ini = open(comicsIniFilePath)
     except:
@@ -139,17 +156,16 @@ def init():
     readConfig(ini)
     ini.close()
     
-    home = config.get('base', 'home')
+    home = parser.get('base', 'home')
 #    print("[D] home={}".format(home))
-    comicType = config.get('base', 'type')
+    comicType = parser.get('base', 'type')
 #    print("[D] type={}".format(comicType))    
-    downloadCount = int(config.get('base', 'count'))
+    downloadCount = int(parser.get('base', 'count'))
 #    print("[D] count={}".format(downloadCount))
+    ini = open(linksIniFilePath)    
+    readConfig(ini)
     
-def updateConfig():
-#    global home
-#    global comicType
-#    global downloadCount    
+def updateConfig():    
     configFile = open(comicsIniFilePath, "w")
     configFile.write("[base]\n")
     configFile.write("type={}\n".format(comicType))
@@ -207,16 +223,17 @@ def resolveInput(buff):
         if buff == "":
             return
         comicUrl = cleanUrl(buff)
+
+        host = getHostFromUrl(comicUrl)
+        
         if not comicUrl:
             return
         if "gallery" in comicUrl:
             tmp = comicUrl.split("allery")
             comicUrl = tmp[0] + tmp[1]
         newComic = Comic(comicUrl)
-        if comicType == "folder":
-            newComic.downloadPages()
-        else:
-            newComic.createCBZ()
+        newComic.updateRegex(host)
+        newComic.download()        
         del(newComic)
     
 def main():
