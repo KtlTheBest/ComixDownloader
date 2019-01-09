@@ -14,10 +14,7 @@ downloadCount = 0
 
 comicsIniFilePath = "support" + os.sep + "Comics.ini"
 
-try:
-    config = ConfigParser.RawConfigParser(allow_no_value=True)
-except:
-    pass
+parser = ConfigParser.RawConfigParser(allow_no_value=True)
 
 headers = {
     "User-Agent": "Mozilla/5.0 (X11; Ubuntu; Linux x86_64; rv:62.0) Gecko/20100101 Firefox/62.0",
@@ -33,6 +30,7 @@ class Comic:
         self.text = self.getPageCode()        
         self.name = self.getComicName()
         self.pages = self.getPageCount()
+        
         self.downloadFolder = home + os.sep + self.name
     
     def getPageCode(self):
@@ -109,10 +107,10 @@ def deleteDir(name):
     rmtree(name, ignore_errors=True)
 
 def readConfig(conf):
-    global config    
+    global parser    
     sample_config = conf.read()
     conf.close()
-    config.readfp(io.BytesIO(sample_config))
+    parser.readfp(io.BytesIO(sample_config))
 
 def init():
     global home
@@ -197,18 +195,17 @@ def getNumLen(x):
 def resolveInput(buff):
     global comicType
     try:        
-        command = re.compile(r'^:(.+?)$').match(buff).group(0)
-        if "type" in command:
-            tmp = command.split('=')[1].lower()
-            if tmp == 'folder':
-                comicType = "folder"
-            elif tmp == 'cbz':
-                comicType = "cbz"
-            else:
-                print("[x] Unknown type!")
+        command = re.compile(r'^:(.+?)$').match(buff).group(1)
+        if command == 'fld':
+            comicType = "folder"
+        elif command == 'cbz':
+            comicType = "cbz"
         else:
             print("[x] Unknown command!")
     except:
+        buff = buff.replace(' ', '')
+        if buff == "":
+            return
         comicUrl = cleanUrl(buff)
         if not comicUrl:
             return
