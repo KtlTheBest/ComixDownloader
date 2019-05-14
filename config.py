@@ -48,7 +48,7 @@ class BaseConfig:
 		self.saveConfig()
 
 class ComicHelper:
-	def __init__(self):
+	def __init__(self, host, baseConfig):
 		"""
 		This class contains all the necessary REs that might be used
 		when downloading the comics
@@ -64,20 +64,26 @@ class ComicHelper:
 		self.chapterPatRE = r''
 		self.chapterGroupNum = 0
 		self.chapterPrependUrl = 0
-		pass
+
+		self.filename = baseConfig.configFolder + os.sep + host
+
+		self.loadFromFile()
 	
-	def loadFromFile(self, filename):
+	def loadFromFile(self):
 		"""
 		This method accepts the filename as it's argument
 		and calls pickle.load() on it.
 		It should do some error handling
 		"""
 		try:
-			configFile = open("filename")
-			self = pickle.load(configFile)
+			configFile = open(self.filename)
+			some_dict = pickle.load(configFile)
+			self.__dict__.update(some_dict)
 			configFile.close()
-		except:
+		except IOError:
 			raise UnknownComicSource
+		except EOFError:
+			print("[x] Something went wrong when trying to load comic helper")
 	
 	def pickleToFile(self):
 		"""
@@ -85,4 +91,5 @@ class ComicHelper:
 		It is not intended to be called inside main.py or
 		comic_class.py
 		"""
-		pass
+		with open(self.filename, "wb") as f:
+			pickle.dump(self.__dict__, f)

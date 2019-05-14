@@ -20,9 +20,9 @@ class Comic:
 		if self.urlType == "unknown":
 			raise UnknownUrlType
 			
-		#host = getHostFromUrl(self.url)        
+		host = getHostFromUrl(self.url)        
 			
-		self.comicHelper = config.ComicHelper()
+		self.comicHelper = config.ComicHelper(host)
 		self.baseConfig = baseConfig
 		
 		self.text = self.getPageCode()        
@@ -147,17 +147,30 @@ class Comic:
 				toPrepend = self.url
 			for item in matches:
 				self.chapterUrls.append(toPrepend + item.group(1))
+
+	def downloadChapters(self, listOfChapters):
+		for url in listOfChapters:
+			self.downloadChapter(url)
 	
 	def printChaptersAndChooseWhichToDownload(self):
 		self.getChaptersList()
-		for num, item in enumerate(self.ChapterUrl):
+		for num, item in enumerate(self.ChapterUrls):
 			print(str(num + 1) + item)
+
+		buff = input("Download all (Y) or chapter number: ").rstrip()
+		if buff.lower()[0] == "y" or buff.lower() == "yes":
+			urlsOfChaptersToDownload = self.ChapterUrls
+		else:
+			buff = int(buff) # User input here. Should serialize more
+			urlsOfChaptersToDownload = [self.ChapterUrls[buff - 1]]
+
+		self.downloadChapters(urlsOfChaptersToDownload)
 	
 	def download(self):
 		if self.urlType == "main":
 			self.printChaptersAndChooseWhichToDownload()
 		if self.urlType == "chapter":
-			self.downloadChapter()
+			self.downloadChapter(self.url)
 		if self.urlType == "page":
 			self.downloadPage(self.url)
 
