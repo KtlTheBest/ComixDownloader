@@ -1,3 +1,4 @@
 Comics.ini
 Comics/
 *.pyc
+support/config.pickle

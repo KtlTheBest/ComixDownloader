@@ -14,13 +14,6 @@ from comic_class import Comic
 from error import UnknownUrlType
 import config
 
-
-home = ""
-comicType = ""
-downloadCount = 0
-
-parser = ConfigParser.RawConfigParser(allow_no_value=True)
-
 baseConfig = config.BaseConfig()
 
 def createDir(name):
@@ -51,8 +44,7 @@ def updateConfig():
 	baseConfig.saveConfig()
 
 def user_input():
-    global comicType
-    if comicType == "folder":
+    if baseConfig.downloadType == "folder":
         tp = "fld"
     else:
         tp = "cbz"
@@ -78,45 +70,48 @@ def cleanUrl(url):
     except:
         print("[x] Typo in a url")    
 
-def parseOptionCommandOrPrintUnknown(buff):
-	global comicType	
+def parseOptionCommandOrPrintUnknown(buff):	
 	if buff[0] != ":":
 		return False
 	
 	command = buff[1:]
 	if command == 'fld':
-		comicType = "folder"
+		baseConfig.downloadType = "folder"
 	elif command == 'cbz':
-		comicType = "cbz"
+		baseConfig.downloadType = "cbz"
 	else:
 		print("[x] Unknown command!")    
 	return True
     
 def resolveInput(buff):
-    global comicType     
-    if parseOptionCommandOrPrintUnknown(buff) == True:
-        return
+	if parseOptionCommandOrPrintUnknown(buff) == True:
+		return
 	buff = buff.replace(' ', '')
-    if buff == "":
-        return
-    comicUrl = cleanUrl(buff)
-    try:
+	if buff == "":
+		return
+	comicUrl = cleanUrl(buff)
+	try:
 		newComic = Comic(comicUrl, baseConfig)
 		newComic.download()
 	except UnknownUrlType:
 		print("[x] Unknown manga source!")
     
 def main():
-    init()
-    while True:
-        buff = user_input()
-        if re.compile(r'^:x').match(buff):
-            updateConfig()            
-            return
-        elif re.compile(r'^:h\w*?$').match(buff):
-            printHelp()
-        else:
-            resolveInput(buff)
+	init()
+	while True:
+		try:
+			buff = user_input()
+		except KeyboardInterrupt:
+			updateConfig()
+			return
+			
+		if re.compile(r'^:x').match(buff):
+			updateConfig()            
+			return
+		elif re.compile(r'^:h\w*?$').match(buff):
+			printHelp()
+		else:
+			resolveInput(buff)
         
 if __name__ == "__main__":
     main()

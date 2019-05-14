@@ -9,9 +9,16 @@ class UnknownUrlType(Error):
 	"""
 	pass
 
-class UnknownComicSource(Error)
+class UnknownComicSource(Error):
 	"""
 	Raised when program can't find the comic source in it's support
 	folder
+	"""
+	pass
+
+class IncorrectUrlType(Error):
+	"""
+	Raised when the expected type of url doesn't match the method
+	invariant
 	"""
 	pass

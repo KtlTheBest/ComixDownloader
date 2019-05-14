@@ -14,7 +14,6 @@ headers = {
 
 class BaseConfig:
 	def __init__(self, *args, **kwargs):
-		self.downloadCount = 0
 		self.downloadFolder = "Comics"
 		self.downloadType = "folder"
 		self.configFolder = "support"
@@ -25,25 +24,28 @@ class BaseConfig:
 		if self.doesHaveConfigFile() == False:
 			self.createConfig()
 		else:
-			with open(filename) as f:
-				config = pickle.load(f)
-
-			self.downloadCount  = config.downloadCount
-			self.downloadFolder = config.downloadFolder
-			self.downloadType   = config.downloadType
-
-	def doesHaveConfigFile():
+			with open(self.filename) as f:
+				config_dict = pickle.load(f)
+			self.__dict__.update(config_dict)
+				
+	def doesHaveConfigFile(self):
 		try:
-			with open(self.filename, "wb") as f:
-				return True
-		except:
+			open(self.filename)
+			return True
+		except IOError:
 			return False
-
+	
 	def saveConfig(self):
-		filename = self.configFolder + sep + self.configName
-		configFile = open(filename, "wb")
-		pickle.dump(self, filename)
+		configFile = open(self.filename, "wb")
+		pickle.dump(self.__dict__, configFile)
 		configFile.close()
+
+	def createConfig(self):
+		try:
+			os.rm(self.filename)
+		except:
+			pass
+		self.saveConfig()
 
 class ComicHelper:
 	def __init__(self):
@@ -54,14 +56,14 @@ class ComicHelper:
 		
 		# Note: this is just a prototype, how the __init__
 		# should look like
-        self.mangaUrlPatRE = r'' 
-        self.imageUrlPatRE = r''
-        self.mangaNamePatRE = r''
-        self.optionPatRE = r''
-        self.chapterPatRE = r''
-        self.chapterGroupNum = 0
-        self.chapterPrependUrl = 0
-		
+		self.mangaUrlPatRE = r'' 
+		self.imageUrlPatRE = r''
+		self.imageUrlPageReplacePatRE = r''
+		self.mangaNamePatRE = r''
+		self.optionPatRE = r''
+		self.chapterPatRE = r''
+		self.chapterGroupNum = 0
+		self.chapterPrependUrl = 0
 		pass
 	
 	def loadFromFile(self, filename):
